@@ -9,6 +9,7 @@ pub struct Url {
     host: String,
     port: String,
     path: String,
+    search_part: String,
 }
 
 impl Url {
@@ -18,6 +19,7 @@ impl Url {
             host: "".to_string(),
             port: "".to_string(),
             path: "".to_string(),
+            search_part: "".to_string(),
         }
     }
 
@@ -71,6 +73,25 @@ impl Url {
         path_and_search_parts[0].to_string()
     }
 
+    fn extract_search_part(&self) -> String {
+        let url_parts: Vec<&str> = self
+            .url
+            .trim_start_matches("http://")
+            .splitn(2, "/")
+            .collect();
+
+        if url_parts.len() < 2 {
+            return "".to_string();
+        }
+
+        let path_and_search_parts: Vec<&str> = url_parts[1].splitn(2, "?").collect();
+        if path_and_search_parts.len() < 2 {
+            "".to_string()
+        } else {
+            path_and_search_parts[1].to_string()
+        }
+    }
+
     pub fn parse(&mut self) -> Result<Self, String> {
         if !self.is_http() {
             return Err("Only HTTP scheme is supported".to_string());
@@ -79,6 +100,7 @@ impl Url {
         self.host = self.extract_host();
         self.port = self.extract_port();
         self.path = self.extract_path();
+        self.search_part = self.extract_search_part();
         Ok(self.clone())
     }
 
@@ -90,6 +112,9 @@ impl Url {
     }
     pub fn path(&self) -> String {
         self.path.clone()
+    }
+    pub fn search_part(&self) -> String {
+        self.search_part.clone()
     }
 }
 
@@ -120,6 +145,7 @@ mod tests {
                 host: "example.com".to_string(),
                 port: "80".to_string(),
                 path: "".to_string(),
+                search_part: "".to_string(),
             });
             assert_eq!(Url::new(url).parse(), expected)
         }
@@ -191,6 +217,24 @@ mod tests {
                 .unwrap()
                 .path(),
             "foo/bar".to_string()
+        );
+    }
+
+    #[test]
+    fn extract_search_part_from_url() {
+        assert_eq!(
+            Url::new("http://example.com".to_string())
+                .parse()
+                .unwrap()
+                .search_part(),
+            "".to_string()
+        );
+        assert_eq!(
+            Url::new("http://github.com:8080/foo/bar?page=2&order=asc".to_string())
+                .parse()
+                .unwrap()
+                .search_part(),
+            "page=2&order=asc".to_string()
         );
     }
 }
