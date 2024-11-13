@@ -7,6 +7,7 @@ use alloc::{
 pub struct Url {
     url: String,
     host: String,
+    port: String,
 }
 
 impl Url {
@@ -14,6 +15,7 @@ impl Url {
         Self {
             url,
             host: "".to_string(),
+            port: "".to_string(),
         }
     }
 
@@ -38,17 +40,35 @@ impl Url {
         }
     }
 
+    fn extract_port(&self) -> String {
+        let url_parts: Vec<&str> = self
+            .url
+            .trim_start_matches("http://")
+            .splitn(2, "/")
+            .collect();
+
+        if let Some(index) = url_parts[0].find(":") {
+            url_parts[0][index + 1..].to_string()
+        } else {
+            "80".to_string()
+        }
+    }
+
     pub fn parse(&mut self) -> Result<Self, String> {
         if !self.is_http() {
             return Err("Only HTTP scheme is supported".to_string());
         }
 
         self.host = self.extract_host();
+        self.port = self.extract_port();
         Ok(self.clone())
     }
 
     pub fn host(&self) -> String {
         self.host.clone()
+    }
+    pub fn port(&self) -> String {
+        self.port.clone()
     }
 }
 
@@ -77,6 +97,7 @@ mod tests {
             let expected = Ok(Url {
                 url: "http://example.com".to_string(),
                 host: "example.com".to_string(),
+                port: "80".to_string(),
             });
             assert_eq!(Url::new(url).parse(), expected)
         }
@@ -98,5 +119,38 @@ mod tests {
                 .host(),
             "github.com".to_string()
         );
+    }
+
+    mod extract_port_from_url {
+        use super::*;
+
+        #[test]
+        fn should_be_80_by_default_if_port_is_not_specified() {
+            assert_eq!(
+                Url::new("http://example.com".to_string())
+                    .parse()
+                    .unwrap()
+                    .port(),
+                "80".to_string()
+            );
+        }
+
+        #[test]
+        fn should_be_the_after_the_colon() {
+            assert_eq!(
+                Url::new("http://example.com:200".to_string())
+                    .parse()
+                    .unwrap()
+                    .port(),
+                "200".to_string()
+            );
+            assert_eq!(
+                Url::new("http://github.com:8080/foo/bar?page=2&order=asc".to_string())
+                    .parse()
+                    .unwrap()
+                    .port(),
+                "8080".to_string()
+            );
+        }
     }
 }
