@@ -18,6 +18,7 @@ impl Header {
     }
 }
 
+#[derive(Debug)]
 pub struct HttpResponse {
     version: String,
     status_code: u32,
