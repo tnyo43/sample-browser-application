@@ -1,3 +1,5 @@
+use crate::error::Error;
+
 use alloc::{
     format,
     string::{String, ToString},
@@ -11,12 +13,15 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
-    pub fn new(raw_response: String) -> Result<Self, String> {
+    pub fn new(raw_response: String) -> Result<Self, Error> {
         let preprocessed_response = raw_response.trim_start().replace("\n\r", "\n");
         let (status_line, _remaining) = match preprocessed_response.split_once('\n') {
             Some((s, r)) => (s, r),
             None => {
-                return Err(format!("invalid http response: {}", preprocessed_response));
+                return Err(Error::Network(format!(
+                    "invalid http response: {}",
+                    preprocessed_response
+                )));
             }
         };
 
@@ -45,6 +50,14 @@ impl HttpResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_return_error_if_response_does_not_contain_newline() {
+        let raw = "HTTP/1.1 200 OK".to_string();
+        let result = HttpResponse::new(raw);
+
+        assert!(result.is_err());
+    }
 
     #[test]
     fn parse_status_line_correctly() {
