@@ -85,6 +85,16 @@ impl HttpResponse {
     pub fn body(&self) -> String {
         self.body.clone()
     }
+
+    pub fn header_value(&self, name: &str) -> Result<String, String> {
+        for h in &self.headers {
+            if h.name == name {
+                return Ok(h.value.clone());
+            }
+        }
+
+        Err(format!("failed to find {} in headers", name))
+    }
 }
 
 #[cfg(test)]
@@ -156,6 +166,33 @@ mod tests {
                 ])
             );
             assert_eq!(result.body(), "hello world".to_string());
+        }
+
+        #[test]
+        fn header_value_can_be_obtained() {
+            let raw = "HTTP/1.1 xxx OK\nHost: localhost:80  \n User-Agent : Mozilla/5.0\nAccept: text/html, application/xhtml+xml\nContent-Length:11\n\nhello world".to_string();
+            let header_response = HttpResponse::new(raw).unwrap();
+
+            assert_eq!(
+                header_response.header_value("Host"),
+                Ok("localhost:80".to_string())
+            );
+            assert_eq!(
+                header_response.header_value("User-Agent"),
+                Ok("Mozilla/5.0".to_string())
+            );
+            assert_eq!(
+                header_response.header_value("Accept"),
+                Ok("text/html, application/xhtml+xml".to_string())
+            );
+            assert_eq!(
+                header_response.header_value("Content-Length"),
+                Ok("11".to_string())
+            );
+            assert_eq!(
+                header_response.header_value("Connection"),
+                Err("failed to find Connection in headers".to_string())
+            );
         }
     }
 }
