@@ -2,6 +2,7 @@ use alloc::{string::String, vec::Vec};
 
 use super::attribute::Attribute;
 
+#[derive(Clone)]
 pub enum HtmlToken {
     StartTag {
         tag: String,
@@ -71,6 +72,31 @@ impl HtmlTokenizer {
     fn create_end_tag(&mut self) {
         self.latest_token = Some(HtmlToken::EndTag { tag: String::new() })
     }
+
+    fn append_tag_name(&mut self, c: char) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(token) = self.latest_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    ref mut tag,
+                    self_closing: _,
+                    attributes: _,
+                }
+                | HtmlToken::EndTag { ref mut tag } => tag.push(c),
+                _ => panic!("`latest_token` should be eighter StartTag or EndTag"),
+            }
+        }
+    }
+
+    fn take_latest_token(&mut self) -> Option<HtmlToken> {
+        assert!(self.latest_token.is_some());
+
+        let token = self.latest_token.as_ref().cloned();
+        self.latest_token = None;
+
+        token
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -131,6 +157,33 @@ impl Iterator for HtmlTokenizer {
                         self.create_end_tag();
                         continue;
                     }
+                }
+                State::TagName => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if c.is_ascii_uppercase() {
+                        self.append_tag_name(c.to_ascii_lowercase());
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_tag_name(c);
                 }
                 _ => {
                     return None;
