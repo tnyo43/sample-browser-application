@@ -234,9 +234,30 @@ mod tests {
     }
 
     #[test]
-    fn parse_html_with_p_tag_with_content() {
-        let html = "<p>rust</p>".to_string();
+    fn parse_html_with_self_closing_img_tag() {
+        let html = "<img/>".to_string();
         let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "img".to_string(),
+                self_closing: true,
+            })
+        );
+        assert_eq!(tokenizer.next(), None);
+    }
+
+    #[test]
+    fn parse_nested_html() {
+        let html = "<body><p>ru<br/>st</p></body>".to_string();
+        let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "body".to_string(),
+                self_closing: false,
+            })
+        );
         assert_eq!(
             tokenizer.next(),
             Some(HtmlToken::StartTag {
@@ -246,6 +267,13 @@ mod tests {
         );
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('r')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('u')));
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "br".to_string(),
+                self_closing: true,
+            })
+        );
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('s')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('t')));
         assert_eq!(
@@ -254,18 +282,10 @@ mod tests {
                 tag: "p".to_string()
             })
         );
-        assert_eq!(tokenizer.next(), None);
-    }
-
-    #[test]
-    fn parse_html_with_self_closing_img_tag() {
-        let html = "<img/>".to_string();
-        let mut tokenizer = HtmlTokenizer::new(html);
         assert_eq!(
             tokenizer.next(),
-            Some(HtmlToken::StartTag {
-                tag: "img".to_string(),
-                self_closing: true,
+            Some(HtmlToken::EndTag {
+                tag: "body".to_string()
             })
         );
         assert_eq!(tokenizer.next(), None);
