@@ -13,4 +13,11 @@ impl Attribute {
             value: String::new(),
         }
     }
+
+    pub fn add_char(&mut self, c: char, is_name: bool) {
+        match is_name {
+            true => self.name.push(c),
+            false => self.value.push(c),
+        }
+    }
 }
