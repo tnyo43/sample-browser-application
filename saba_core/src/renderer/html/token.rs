@@ -67,6 +67,10 @@ impl HtmlTokenizer {
             attributes: Vec::new(),
         });
     }
+
+    fn create_end_tag(&mut self) {
+        self.latest_token = Some(HtmlToken::EndTag { tag: String::new() })
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -115,6 +119,18 @@ impl Iterator for HtmlTokenizer {
 
                     self.re_consume = true;
                     self.state = State::Data;
+                }
+                State::EndTagOpen => {
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    if c.is_alphabetic() {
+                        self.re_consume = true;
+                        self.state = State::TagName;
+                        self.create_end_tag();
+                        continue;
+                    }
                 }
                 _ => {
                     return None;
