@@ -1,17 +1,9 @@
 use alloc::{string::String, vec::Vec};
 
-use super::attribute::Attribute;
-
 #[derive(Clone, PartialEq, Debug)]
 pub enum HtmlToken {
-    StartTag {
-        tag: String,
-        self_closing: bool,
-        attributes: Vec<Attribute>,
-    },
-    EndTag {
-        tag: String,
-    },
+    StartTag { tag: String, self_closing: bool },
+    EndTag { tag: String },
     Char(char),
     Eof,
 }
