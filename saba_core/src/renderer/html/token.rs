@@ -189,6 +189,7 @@ mod tests {
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('o')));
+        assert_eq!(tokenizer.next(), None);
     }
 
     #[test]
@@ -208,5 +209,6 @@ mod tests {
                 tag: "body".to_string()
             })
         );
+        assert_eq!(tokenizer.next(), None);
     }
 }
