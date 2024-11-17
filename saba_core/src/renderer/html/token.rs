@@ -51,6 +51,11 @@ impl HtmlTokenizer {
         c
     }
 
+    fn re_consume_input(&mut self) -> char {
+        self.re_consume = false;
+        self.input[self.pos - 1]
+    }
+
     fn is_eof(&self) -> bool {
         self.pos == self.input.len()
     }
@@ -73,7 +78,10 @@ impl Iterator for HtmlTokenizer {
         };
 
         loop {
-            let c = self.consume_next_input();
+            let c = match self.re_consume {
+                true => self.re_consume_input(),
+                false => self.consume_next_input(),
+            };
 
             match self.state {
                 State::Data => {
