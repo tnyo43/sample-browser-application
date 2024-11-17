@@ -2,7 +2,7 @@ use alloc::{string::String, vec::Vec};
 
 use super::attribute::Attribute;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum HtmlToken {
     StartTag {
         tag: String,
@@ -33,6 +33,15 @@ pub struct HtmlTokenizer {
 }
 
 impl HtmlTokenizer {
+    pub fn new(html: String) -> Self {
+        Self {
+            input: html.chars().collect(),
+            pos: 0,
+            state: State::Data,
+            re_consume: false,
+        }
+    }
+
     fn consume_next_input(&mut self) -> char {
         let c = self.input[self.pos];
         self.pos += 1;
@@ -45,7 +54,7 @@ impl HtmlTokenizer {
     }
 
     fn is_eof(&self) -> bool {
-        self.pos == self.input.len()
+        self.pos > self.input.len()
     }
 }
 
@@ -64,8 +73,37 @@ impl Iterator for HtmlTokenizer {
             };
 
             match self.state {
+                State::Data => {
+                    if c == '<' {
+                        todo!("")
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    return Some(HtmlToken::Char(c));
+                }
                 _ => return None,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::string::ToString;
+
+    use super::*;
+
+    #[test]
+    fn parse_html_without_tag() {
+        let html = "hello".to_string();
+        let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('h')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('e')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('o')));
     }
 }
