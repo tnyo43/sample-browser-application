@@ -84,7 +84,7 @@ impl HtmlTokenizer {
                     attributes: _,
                 }
                 | HtmlToken::EndTag { ref mut tag } => tag.push(c),
-                _ => panic!("`latest_token` should be eighter StartTag or EndTag"),
+                _ => panic!("`latest_token` should be either StartTag or EndTag"),
             }
         }
     }
@@ -96,6 +96,23 @@ impl HtmlTokenizer {
         self.latest_token = None;
 
         token
+    }
+
+    fn start_new_attribute(&mut self) {
+        assert!(self.latest_token.is_some());
+
+        if let Some(token) = self.latest_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    attributes.push(Attribute::new());
+                }
+                _ => panic!("`latest_token` should be either StartTag"),
+            }
+        }
     }
 }
 
@@ -184,6 +201,17 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     self.append_tag_name(c);
+                }
+                State::BeforeAttributeName => {
+                    self.re_consume = true;
+
+                    if c == '/' || c == '>' || self.is_eof() {
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
                 }
                 _ => {
                     return None;
