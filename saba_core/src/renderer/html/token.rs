@@ -36,4 +36,29 @@ enum State {
     TemporaryBuffer,
 }
 
-pub struct HtmlTokenizer {}
+pub struct HtmlTokenizer {
+    input: String,
+    pos: usize,
+    state: State,
+}
+
+impl Iterator for HtmlTokenizer {
+    type Item = HtmlToken;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.pos >= self.input.len() {
+            return None;
+        };
+
+        loop {
+            match self.state {
+                State::Data => {
+                    return None;
+                }
+                _ => {
+                    return None;
+                }
+            }
+        }
+    }
+}
