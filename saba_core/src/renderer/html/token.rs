@@ -211,4 +211,28 @@ mod tests {
         );
         assert_eq!(tokenizer.next(), None);
     }
+
+    #[test]
+    fn parse_html_with_p_tag_with_content() {
+        let html = "<p>rust</p>".to_string();
+        let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "p".to_string(),
+                self_closing: false,
+            })
+        );
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('r')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('u')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('s')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('t')));
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::EndTag {
+                tag: "p".to_string()
+            })
+        );
+        assert_eq!(tokenizer.next(), None);
+    }
 }
