@@ -16,6 +16,7 @@ pub enum HtmlToken {
     Eof,
 }
 
+#[derive(PartialEq)]
 enum State {
     Data,
     TagOpen,
@@ -297,6 +298,40 @@ impl Iterator for HtmlTokenizer {
 
                     self.re_consume = true;
                     self.state = State::AttributeValueUnquoted;
+                }
+                State::AttributeValueDoubleQuoted | State::AttributeValueSingleQuoted => {
+                    let close_char = if self.state == State::AttributeValueDoubleQuoted {
+                        '"'
+                    } else {
+                        '\''
+                    };
+                    if c == close_char {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute(c, false);
+                }
+                State::AttributeValueUnquoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute(c, false);
                 }
                 _ => {
                     return None;
