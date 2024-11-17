@@ -22,6 +22,7 @@ pub struct HtmlTokenizer {
     pos: usize,
     state: State,
     re_consume: bool,
+    last_token: Option<HtmlToken>,
 }
 
 impl HtmlTokenizer {
@@ -31,6 +32,7 @@ impl HtmlTokenizer {
             pos: 0,
             state: State::Data,
             re_consume: false,
+            last_token: None,
         }
     }
 
@@ -47,6 +49,42 @@ impl HtmlTokenizer {
 
     fn is_eof(&self) -> bool {
         self.pos > self.input.len()
+    }
+
+    fn create_start_tag(&mut self) {
+        self.last_token = Some(HtmlToken::StartTag {
+            tag: String::new(),
+            self_closing: false,
+        })
+    }
+
+    fn create_end_tag(&mut self) {
+        self.last_token = Some(HtmlToken::EndTag { tag: String::new() })
+    }
+
+    fn take_last_token(&mut self) -> HtmlToken {
+        assert!(self.last_token.is_some());
+
+        let token = self.last_token.clone().unwrap();
+        self.last_token = None;
+        token
+    }
+
+    fn append_tag_name(&mut self, c: char) {
+        assert!(self.last_token.is_some());
+
+        if let Some(token) = self.last_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    ref mut tag,
+                    self_closing: _,
+                }
+                | HtmlToken::EndTag { ref mut tag } => {
+                    tag.push(c);
+                }
+                _ => panic!("`last_token` should be either StartTag or EndTag"),
+            }
+        }
     }
 }
 
@@ -67,7 +105,8 @@ impl Iterator for HtmlTokenizer {
             match self.state {
                 State::Data => {
                     if c == '<' {
-                        todo!("")
+                        self.state = State::TagOpen;
+                        continue;
                     }
 
                     if self.is_eof() {
@@ -75,6 +114,59 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     return Some(HtmlToken::Char(c));
+                }
+                State::TagOpen => {
+                    if c == '/' {
+                        self.state = State::EndTagOpen;
+                        continue;
+                    }
+
+                    if c.is_ascii_alphabetic() {
+                        self.re_consume = true;
+                        self.state = State::TagName;
+                        self.create_start_tag();
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::Data;
+                }
+                State::EndTagOpen => {
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    if c.is_ascii_alphabetic() {
+                        self.re_consume = true;
+                        self.state = State::TagName;
+                        self.create_end_tag();
+                        continue;
+                    }
+                }
+                State::TagName => {
+                    if c == ' ' {
+                        todo!("");
+                        continue;
+                    }
+                    if c == '/' {
+                        todo!("implement self closing tags");
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return Some(self.take_last_token());
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_tag_name(c.to_ascii_lowercase());
                 }
                 _ => return None,
             }
@@ -97,5 +189,24 @@ mod tests {
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('o')));
+    }
+
+    #[test]
+    fn parse_html_with_empty_body_tag() {
+        let html = "<body></body>".to_string();
+        let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "body".to_string(),
+                self_closing: false,
+            })
+        );
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::EndTag {
+                tag: "body".to_string()
+            })
+        );
     }
 }
