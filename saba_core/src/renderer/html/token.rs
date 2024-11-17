@@ -15,4 +15,25 @@ pub enum HtmlToken {
     Eof,
 }
 
+enum State {
+    Data,
+    TagOpen,
+    EndTagOpen,
+    TagName,
+    BeforeAttributeName,
+    AttributeName,
+    AfterAttributeName,
+    BeforeAttributeValue,
+    AttributeValueDoubleQuoted,
+    AttributeValueSingleQuoted,
+    AttributeValueUnquoted,
+    AfterAttributeValueQuoted,
+    SelfClosingStartTag,
+    ScriptData,
+    ScriptDataLessThanSign,
+    ScriptDataEndTagOpen,
+    ScriptDataEmdTagName,
+    TemporaryBuffer,
+}
+
 pub struct HtmlTokenizer {}
