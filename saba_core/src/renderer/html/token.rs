@@ -86,6 +86,20 @@ impl HtmlTokenizer {
             }
         }
     }
+
+    fn set_self_closing_flag(&mut self) {
+        assert!(self.last_token.is_some());
+
+        if let Some(token) = self.last_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    tag: _,
+                    ref mut self_closing,
+                } => *self_closing = true,
+                _ => panic!("`last_token` should be either StartTag"),
+            }
+        }
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -153,7 +167,7 @@ impl Iterator for HtmlTokenizer {
                         continue;
                     }
                     if c == '/' {
-                        todo!("implement self closing tags");
+                        self.state = State::SelfClosingStartTag;
                         continue;
                     }
 
@@ -167,6 +181,13 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     self.append_tag_name(c.to_ascii_lowercase());
+                }
+                State::SelfClosingStartTag => {
+                    if c == '>' {
+                        self.set_self_closing_flag();
+                        self.state = State::Data;
+                        return Some(self.take_last_token());
+                    }
                 }
                 _ => return None,
             }
@@ -231,6 +252,20 @@ mod tests {
             tokenizer.next(),
             Some(HtmlToken::EndTag {
                 tag: "p".to_string()
+            })
+        );
+        assert_eq!(tokenizer.next(), None);
+    }
+
+    #[test]
+    fn parse_html_with_self_closing_img_tag() {
+        let html = "<img/>".to_string();
+        let mut tokenizer = HtmlTokenizer::new(html);
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "img".to_string(),
+                self_closing: true,
             })
         );
         assert_eq!(tokenizer.next(), None);
