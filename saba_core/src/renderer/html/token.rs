@@ -34,7 +34,7 @@ enum State {
     ScriptData,
     ScriptDataLessThanSign,
     ScriptDataEndTagOpen,
-    ScriptDataEmdTagName,
+    ScriptDataEndTagName,
     TemporaryBuffer,
 }
 
@@ -44,6 +44,7 @@ pub struct HtmlTokenizer {
     state: State,
     re_consume: bool,
     latest_token: Option<HtmlToken>,
+    buf: String,
 }
 
 impl HtmlTokenizer {
@@ -383,8 +384,73 @@ impl Iterator for HtmlTokenizer {
                         return Some(HtmlToken::Eof);
                     }
                 }
-                _ => {
-                    return None;
+                State::ScriptData => {
+                    if c == '<' {
+                        self.state = State::ScriptDataLessThanSign;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    return Some(HtmlToken::Char(c));
+                }
+                State::ScriptDataLessThanSign => {
+                    if c == '/' {
+                        self.buf = String::new();
+                        self.state = State::ScriptDataEndTagOpen;
+                        continue;
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::ScriptData;
+                    return Some(HtmlToken::Char('<'));
+                }
+                State::ScriptDataEndTagOpen => {
+                    if c.is_ascii_alphabetic() {
+                        self.re_consume = true;
+                        self.state = State::ScriptDataEndTagName;
+                        self.create_end_tag();
+                        continue;
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::ScriptData;
+                    return Some(HtmlToken::Char('<'));
+                }
+                State::ScriptDataEndTagName => {
+                    if c == '>' {
+                        self.state = State::Data;
+                        return self.take_latest_token();
+                    }
+
+                    if c.is_ascii_alphabetic() {
+                        self.buf.push(c);
+                        self.append_tag_name(c.to_ascii_lowercase());
+                        continue;
+                    }
+
+                    self.state = State::TemporaryBuffer;
+                    self.buf = String::from("</") + &self.buf;
+                    self.buf.push(c);
+                    continue;
+                }
+                State::TemporaryBuffer => {
+                    self.re_consume = true;
+
+                    if self.buf.chars().count() == 0 {
+                        self.state = State::ScriptData;
+                        continue;
+                    }
+
+                    let c = self
+                        .buf
+                        .chars()
+                        .nth(0)
+                        .expect("self.buf should have at least 1 char");
+                    self.buf.remove(0);
+                    return Some(HtmlToken::Char(c));
                 }
             }
         }
