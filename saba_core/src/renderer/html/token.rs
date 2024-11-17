@@ -40,6 +40,8 @@ pub struct HtmlTokenizer {
     input: Vec<char>,
     pos: usize,
     state: State,
+    re_consume: bool,
+    latest_token: Option<HtmlToken>,
 }
 
 impl HtmlTokenizer {
@@ -51,6 +53,14 @@ impl HtmlTokenizer {
 
     fn is_eof(&self) -> bool {
         self.pos == self.input.len()
+    }
+
+    fn create_start_tag(&mut self) {
+        self.latest_token = Some(HtmlToken::StartTag {
+            tag: String::new(),
+            self_closing: false,
+            attributes: Vec::new(),
+        });
     }
 }
 
@@ -77,6 +87,26 @@ impl Iterator for HtmlTokenizer {
                     }
 
                     return Some(HtmlToken::Char(c));
+                }
+                State::TagOpen => {
+                    if c == '/' {
+                        self.state = State::EndTagOpen;
+                        continue;
+                    }
+
+                    if c.is_ascii_alphabetic() {
+                        self.re_consume = true;
+                        self.state = State::TagName;
+                        self.create_start_tag();
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::Data;
                 }
                 _ => {
                     return None;
