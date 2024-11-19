@@ -21,6 +21,14 @@ enum State {
     TagOpen,
     EndTagOpen,
     TagName,
+    BeforeAttributeName,
+    AttributeName,
+    AfterAttributeName,
+    BeforeAttributeValue,
+    AttributeValueDoubleQuoted,
+    AttributeValueSingleQuoted,
+    AttributeValueUnquoted,
+    AfterAttributeValueQuoted,
     SelfClosingStartTag,
 }
 
@@ -110,6 +118,47 @@ impl HtmlTokenizer {
             }
         }
     }
+
+    fn start_new_attribute(&mut self) {
+        assert!(self.last_token.is_some());
+
+        if let Some(token) = self.last_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    attributes.push(Attribute::new());
+                }
+                _ => panic!("`last_token` should be either StartTag"),
+            }
+        }
+    }
+
+    fn append_attribute_char(&mut self, c: char, is_name: bool) {
+        assert!(self.last_token.is_some());
+
+        if let Some(token) = self.last_token.as_mut() {
+            match token {
+                HtmlToken::StartTag {
+                    tag: _,
+                    self_closing: _,
+                    ref mut attributes,
+                } => {
+                    let len = attributes.len();
+                    assert!(len > 0);
+
+                    if is_name {
+                        attributes[len - 1].add_name_char(c);
+                    } else {
+                        attributes[len - 1].add_value_char(c);
+                    }
+                }
+                _ => panic!("`last_token` should be either StartTag"),
+            }
+        }
+    }
 }
 
 impl Iterator for HtmlTokenizer {
@@ -173,7 +222,7 @@ impl Iterator for HtmlTokenizer {
                 }
                 State::TagName => {
                     if c == ' ' {
-                        todo!("");
+                        self.state = State::BeforeAttributeName;
                         continue;
                     }
                     if c == '/' {
@@ -192,6 +241,146 @@ impl Iterator for HtmlTokenizer {
 
                     self.append_tag_name(c.to_ascii_lowercase());
                 }
+                State::BeforeAttributeName => {
+                    if c == '/' || c == '>' || self.is_eof() {
+                        self.re_consume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
+                }
+                State::AttributeName => {
+                    if c == ' ' || c == '/' || c == '>' || self.is_eof() {
+                        self.re_consume = true;
+                        self.state = State::AfterAttributeName;
+                        continue;
+                    }
+
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    if c.is_ascii_uppercase() {
+                        self.append_attribute_char(c.to_ascii_lowercase(), true);
+                        continue;
+                    }
+
+                    self.append_attribute_char(c, true);
+                }
+                State::AfterAttributeName => {
+                    if c == ' ' {
+                        continue;
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    if c == '=' {
+                        self.state = State::BeforeAttributeValue;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return Some(self.take_last_token());
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::AttributeName;
+                    self.start_new_attribute();
+                }
+                State::BeforeAttributeValue => {
+                    if c == ' ' {
+                        continue;
+                    }
+
+                    if c == '"' {
+                        self.state = State::AttributeValueDoubleQuoted;
+                        continue;
+                    }
+
+                    if c == '\'' {
+                        self.state = State::AttributeValueSingleQuoted;
+                        continue;
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::AttributeValueUnquoted;
+                }
+                State::AttributeValueDoubleQuoted => {
+                    if c == '"' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute_char(c, false);
+                }
+                State::AttributeValueSingleQuoted => {
+                    if c == '\'' {
+                        self.state = State::AfterAttributeValueQuoted;
+                        continue;
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute_char(c, false);
+                }
+                State::AttributeValueUnquoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return Some(self.take_last_token());
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.append_attribute_char(c, false);
+                }
+                State::AfterAttributeValueQuoted => {
+                    if c == ' ' {
+                        self.state = State::BeforeAttributeName;
+                        continue;
+                    }
+
+                    if c == '/' {
+                        self.state = State::SelfClosingStartTag;
+                        continue;
+                    }
+
+                    if c == '>' {
+                        self.state = State::Data;
+                        return Some(self.take_last_token());
+                    }
+
+                    if self.is_eof() {
+                        return Some(HtmlToken::Eof);
+                    }
+
+                    self.re_consume = true;
+                    self.state = State::BeforeAttributeName;
+                }
                 State::SelfClosingStartTag => {
                     if c == '>' {
                         self.set_self_closing_flag();
@@ -199,7 +388,6 @@ impl Iterator for HtmlTokenizer {
                         return Some(self.take_last_token());
                     }
                 }
-                _ => return None,
             }
         }
     }
