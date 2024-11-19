@@ -1,9 +1,16 @@
+use crate::renderer::html::attribute::Attribute;
 use alloc::{string::String, vec::Vec};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum HtmlToken {
-    StartTag { tag: String, self_closing: bool },
-    EndTag { tag: String },
+    StartTag {
+        tag: String,
+        self_closing: bool,
+        attributes: Vec<Attribute>,
+    },
+    EndTag {
+        tag: String,
+    },
     Char(char),
     Eof,
 }
@@ -55,6 +62,7 @@ impl HtmlTokenizer {
         self.last_token = Some(HtmlToken::StartTag {
             tag: String::new(),
             self_closing: false,
+            attributes: Vec::new(),
         })
     }
 
@@ -78,6 +86,7 @@ impl HtmlTokenizer {
                 HtmlToken::StartTag {
                     ref mut tag,
                     self_closing: _,
+                    attributes: _,
                 }
                 | HtmlToken::EndTag { ref mut tag } => {
                     tag.push(c);
@@ -95,6 +104,7 @@ impl HtmlTokenizer {
                 HtmlToken::StartTag {
                     tag: _,
                     ref mut self_closing,
+                    attributes: _,
                 } => *self_closing = true,
                 _ => panic!("`last_token` should be either StartTag"),
             }
@@ -222,6 +232,7 @@ mod tests {
             Some(HtmlToken::StartTag {
                 tag: "body".to_string(),
                 self_closing: false,
+                attributes: Vec::new()
             })
         );
         assert_eq!(
@@ -242,6 +253,7 @@ mod tests {
             Some(HtmlToken::StartTag {
                 tag: "img".to_string(),
                 self_closing: true,
+                attributes: Vec::new()
             })
         );
         assert_eq!(tokenizer.next(), None);
@@ -256,6 +268,7 @@ mod tests {
             Some(HtmlToken::StartTag {
                 tag: "body".to_string(),
                 self_closing: false,
+                attributes: Vec::new()
             })
         );
         assert_eq!(
@@ -263,6 +276,7 @@ mod tests {
             Some(HtmlToken::StartTag {
                 tag: "p".to_string(),
                 self_closing: false,
+                attributes: Vec::new()
             })
         );
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('r')));
@@ -272,6 +286,7 @@ mod tests {
             Some(HtmlToken::StartTag {
                 tag: "br".to_string(),
                 self_closing: true,
+                attributes: Vec::new()
             })
         );
         assert_eq!(tokenizer.next(), Some(HtmlToken::Char('s')));
