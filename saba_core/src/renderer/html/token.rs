@@ -493,4 +493,68 @@ mod tests {
         );
         assert_eq!(tokenizer.next(), None);
     }
+
+    #[test]
+    fn parse_tag_with_attributes() {
+        let html = "<button disabled><img class=\"x y\" size='16' />click</button>".to_string();
+
+        let mut tokenizer = HtmlTokenizer::new(html);
+
+        let mut disabled_attribute = Attribute::new();
+        disabled_attribute.add_name_char('d');
+        disabled_attribute.add_name_char('i');
+        disabled_attribute.add_name_char('s');
+        disabled_attribute.add_name_char('a');
+        disabled_attribute.add_name_char('b');
+        disabled_attribute.add_name_char('l');
+        disabled_attribute.add_name_char('e');
+        disabled_attribute.add_name_char('d');
+
+        let mut class_x_y_attribute = Attribute::new();
+        class_x_y_attribute.add_name_char('c');
+        class_x_y_attribute.add_name_char('l');
+        class_x_y_attribute.add_name_char('a');
+        class_x_y_attribute.add_name_char('s');
+        class_x_y_attribute.add_name_char('s');
+        class_x_y_attribute.add_value_char('x');
+        class_x_y_attribute.add_value_char(' ');
+        class_x_y_attribute.add_value_char('y');
+
+        let mut size_16_attribute = Attribute::new();
+        size_16_attribute.add_name_char('s');
+        size_16_attribute.add_name_char('i');
+        size_16_attribute.add_name_char('z');
+        size_16_attribute.add_name_char('e');
+        size_16_attribute.add_value_char('1');
+        size_16_attribute.add_value_char('6');
+
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "button".to_string(),
+                self_closing: false,
+                attributes: Vec::from([disabled_attribute])
+            })
+        );
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::StartTag {
+                tag: "img".to_string(),
+                self_closing: true,
+                attributes: Vec::from([class_x_y_attribute, size_16_attribute])
+            })
+        );
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('c')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('l')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('i')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('c')));
+        assert_eq!(tokenizer.next(), Some(HtmlToken::Char('k')));
+        assert_eq!(
+            tokenizer.next(),
+            Some(HtmlToken::EndTag {
+                tag: "button".to_string()
+            })
+        );
+        assert_eq!(tokenizer.next(), None);
+    }
 }
