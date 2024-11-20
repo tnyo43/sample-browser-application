@@ -36,6 +36,28 @@ pub struct Node {
     next_sibling: Option<Rc<RefCell<Node>>>,
 }
 
+impl Node {
+    pub fn new(kind: NodeKind) -> Self {
+        Self {
+            kind,
+            window: Weak::new(),
+            parent: Weak::new(),
+            first_child: None,
+            last_child: Weak::new(),
+            previous_sibling: Weak::new(),
+            next_sibling: None,
+        }
+    }
+}
+
 pub struct Window {
-    document: Rc<RefCell<Window>>,
+    document: Rc<RefCell<Node>>,
+}
+
+impl Window {
+    pub fn new() -> Self {
+        Self {
+            document: Rc::new(RefCell::new(Node::new(NodeKind::Document))),
+        }
+    }
 }
