@@ -88,6 +88,12 @@ impl HtmlParser {
         self.stack_of_open_elements.push(node);
     }
 
+    fn create_char(&self, c: char) -> Node {
+        let mut s = String::new();
+        s.push(c);
+        Node::new(NodeKind::Text(s))
+    }
+
     pub fn construct_tree(&mut self) -> Rc<RefCell<Window>> {
         let mut token = self.t.next();
 
