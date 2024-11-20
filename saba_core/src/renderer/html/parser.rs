@@ -36,4 +36,24 @@ impl HtmlParser {
             stack_of_open_elements: Vec::new(),
         }
     }
+
+    pub fn construct_tree(&mut self) -> Rc<RefCell<Window>> {
+        let mut token = self.t.next();
+
+        while token.is_some() {
+            match self.mode {
+                InsertionMode::Initial => todo!(),
+                InsertionMode::BeforeHtml => todo!(),
+                InsertionMode::BeforeHead => todo!(),
+                InsertionMode::InHead => todo!(),
+                InsertionMode::AfterHead => todo!(),
+                InsertionMode::InBody => todo!(),
+                InsertionMode::Text => todo!(),
+                InsertionMode::AfterBody => todo!(),
+                InsertionMode::AfterAfterBody => todo!(),
+            }
+        }
+
+        self.window.clone()
+    }
 }
