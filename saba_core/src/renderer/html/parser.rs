@@ -74,8 +74,9 @@ impl HtmlParser {
             node.borrow_mut().set_previous_sibling(Rc::downgrade(
                 &current
                     .borrow()
-                    .first_child()
-                    .expect("failed to get a first child"),
+                    .last_child()
+                    .upgrade()
+                    .expect("failed to get a last child"),
             ))
         } else {
             current.borrow_mut().set_first_child(Some(node.clone()));
