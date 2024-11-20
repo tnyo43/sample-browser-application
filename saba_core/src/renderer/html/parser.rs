@@ -4,7 +4,7 @@ use alloc::{rc::Rc, vec::Vec};
 
 use crate::renderer::dom::node::{Node, Window};
 
-use super::token::HtmlTokenizer;
+use super::token::{HtmlToken, HtmlTokenizer};
 
 enum InsertionMode {
     Initial,
@@ -42,7 +42,15 @@ impl HtmlParser {
 
         while token.is_some() {
             match self.mode {
-                InsertionMode::Initial => todo!(),
+                InsertionMode::Initial => {
+                    if let Some(HtmlToken::Char(_)) = token {
+                        token = self.t.next();
+                        continue;
+                    }
+
+                    self.mode = InsertionMode::BeforeHtml;
+                    continue;
+                }
                 InsertionMode::BeforeHtml => todo!(),
                 InsertionMode::BeforeHead => todo!(),
                 InsertionMode::InHead => todo!(),
