@@ -1,6 +1,7 @@
-use core::cell::RefCell;
+use core::{cell::RefCell, fmt::Error, str::FromStr};
 
 use alloc::{
+    format,
     rc::{Rc, Weak},
     string::String,
     vec::Vec,
@@ -15,9 +16,32 @@ pub enum ElementKind {
     Body,
 }
 
+impl FromStr for ElementKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "html" => Ok(ElementKind::Html),
+            "head" => Ok(ElementKind::Head),
+            "style" => Ok(ElementKind::Style),
+            "body" => Ok(ElementKind::Body),
+            _ => Err(format!("unimplemented element name {:?}", s)),
+        }
+    }
+}
+
 pub struct Element {
     kind: ElementKind,
     attributes: Vec<Attribute>,
+}
+
+impl Element {
+    pub fn new(tag: &str, attributes: Vec<Attribute>) -> Self {
+        Self {
+            kind: ElementKind::from_str(tag).expect("failed to convert string to Element Kind"),
+            attributes,
+        }
+    }
 }
 
 pub enum NodeKind {
@@ -48,6 +72,46 @@ impl Node {
             next_sibling: None,
         }
     }
+
+    pub fn set_parent(&mut self, node: Weak<RefCell<Node>>) {
+        self.parent = node
+    }
+
+    pub fn parent(&self) -> Weak<RefCell<Node>> {
+        self.parent.clone()
+    }
+
+    pub fn set_first_child(&mut self, node: Option<Rc<RefCell<Node>>>) {
+        self.first_child = node
+    }
+
+    pub fn first_child(&self) -> Option<Rc<RefCell<Node>>> {
+        self.first_child.as_ref().cloned()
+    }
+
+    pub fn set_last_child(&mut self, node: Weak<RefCell<Node>>) {
+        self.last_child = node
+    }
+
+    pub fn last_child(&self) -> Weak<RefCell<Node>> {
+        self.last_child.clone()
+    }
+
+    pub fn set_previous_sibling(&mut self, node: Weak<RefCell<Node>>) {
+        self.previous_sibling = node
+    }
+
+    pub fn previous_sibling(&self) -> Weak<RefCell<Node>> {
+        self.previous_sibling.clone()
+    }
+
+    pub fn set_next_sibling(&mut self, node: Option<Rc<RefCell<Node>>>) {
+        self.next_sibling = node
+    }
+
+    pub fn next_sibling(&self) -> Option<Rc<RefCell<Node>>> {
+        self.next_sibling.as_ref().cloned()
+    }
 }
 
 pub struct Window {
@@ -59,5 +123,9 @@ impl Window {
         Self {
             document: Rc::new(RefCell::new(Node::new(NodeKind::Document))),
         }
+    }
+
+    pub fn document(&self) -> Rc<RefCell<Node>> {
+        self.document.clone()
     }
 }
