@@ -90,10 +90,24 @@ impl HtmlParser {
 
     fn insert_element(&mut self, tag: &str, attributes: Vec<Attribute>) {
         let window = self.window.borrow();
-        let current = match self.stack_of_open_elements.last() {
-            Some(n) => n.clone(),
-            None => window.document(),
-        };
+        let mut current = window.document();
+        loop {
+            match self.stack_of_open_elements.last() {
+                Some(n) => {
+                    let node = n.clone();
+                    if let NodeKind::Text(_) = node.borrow().kind {
+                        self.stack_of_open_elements.pop();
+                        continue;
+                    };
+                    current = node;
+                    break;
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+
         let node = Rc::new(RefCell::new(self.create_element(tag, attributes)));
 
         if current.borrow().first_child().is_some() {
@@ -586,8 +600,8 @@ mod tests {
 
     #[test]
     fn text_next_and_previous_siblings() {
-        let html =
-            "<html><head></head><body><h1></h1><a></a><p></p><h2></h2></body></html>".to_string();
+        let html = "<html><head></head><body><h1></h1><a></a>hello<p></p><h2></h2></body></html>"
+            .to_string();
         let t = HtmlTokenizer::new(html);
         let window = HtmlParser::new(t).construct_tree();
 
@@ -612,7 +626,8 @@ mod tests {
 
         let h1 = body.borrow().first_child().unwrap();
         let a = h1.borrow().next_sibling().unwrap();
-        let p = a.borrow().next_sibling().unwrap();
+        let hello = a.borrow().next_sibling().unwrap();
+        let p = hello.borrow().next_sibling().unwrap();
         let h2 = p.borrow().next_sibling().unwrap();
 
         assert_eq!(
@@ -630,6 +645,10 @@ mod tests {
             )))))
         );
         assert_eq!(
+            hello,
+            Rc::new(RefCell::new(Node::new(NodeKind::Text("hello".to_string()))))
+        );
+        assert_eq!(
             p,
             Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
                 "p",
@@ -645,7 +664,8 @@ mod tests {
         );
 
         assert!(a.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&h1)));
-        assert!(p.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&a)));
+        assert!(hello.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&a)));
+        assert!(p.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&hello)));
         assert!(h2.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&p)));
     }
 }
