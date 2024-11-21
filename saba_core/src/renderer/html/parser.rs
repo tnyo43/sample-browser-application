@@ -350,8 +350,28 @@ impl HtmlParser {
 
                     continue;
                 }
+                InsertionMode::Text => {
+                    match token {
+                        Some(HtmlToken::Eof) | None => return self.window.clone(),
+                        Some(HtmlToken::EndTag { ref tag }) => {
+                            if tag == "style" {
+                                self.pop_until(ElementKind::Style);
+                                self.mode = self.original_intersection_mode;
+                                token = self.t.next();
+                                continue;
+                            }
+                        }
+                        Some(HtmlToken::Char(c)) => {
+                            self.insert_char(c);
+                            token = self.t.next();
+                            continue;
+                        }
+                        _ => {}
+                    }
 
-                InsertionMode::Text => todo!(),
+                    self.mode = self.original_intersection_mode;
+                    continue;
+                }
                 InsertionMode::AfterBody => todo!(),
                 InsertionMode::AfterAfterBody => todo!(),
             }
