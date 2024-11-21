@@ -219,7 +219,7 @@ impl HtmlParser {
                         _ => {}
                     }
                     self.insert_element("html", Vec::new());
-                    self.mode = InsertionMode::BeforeHtml;
+                    self.mode = InsertionMode::BeforeHead;
                     continue;
                 }
                 InsertionMode::BeforeHead => {
@@ -406,6 +406,7 @@ impl HtmlParser {
                         Some(HtmlToken::EndTag { ref tag }) => {
                             if tag == "html" {
                                 self.mode = InsertionMode::AfterAfterBody;
+                                token = self.t.next();
                                 continue;
                             }
                         }
@@ -435,5 +436,147 @@ impl HtmlParser {
         }
 
         self.window.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::alloc::string::ToString;
+
+    #[test]
+    fn test_empty() {
+        let html = "".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        assert_eq!(
+            document,
+            Rc::new(RefCell::new(Node::new(NodeKind::Document)))
+        );
+    }
+
+    #[test]
+    fn test_html_head_body() {
+        let html = "<html><head></head><body></body></html>".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        assert_eq!(
+            document,
+            Rc::new(RefCell::new(Node::new(NodeKind::Document)))
+        );
+
+        let html = document.borrow().first_child().unwrap();
+        assert_eq!(
+            html,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "html",
+                Vec::new()
+            )))))
+        );
+
+        let head = html.borrow().first_child().unwrap();
+        assert_eq!(
+            head,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "head",
+                Vec::new()
+            )))))
+        );
+
+        let body = head.borrow().next_sibling().unwrap();
+        assert_eq!(
+            body,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "body",
+                Vec::new()
+            )))))
+        );
+    }
+
+    #[test]
+    fn test_without_html() {
+        let html = "<body></body>".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        assert_eq!(
+            document,
+            Rc::new(RefCell::new(Node::new(NodeKind::Document)))
+        );
+
+        let html = document.borrow().first_child().unwrap();
+        assert_eq!(
+            html,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "html",
+                Vec::new()
+            )))))
+        );
+
+        let head = html.borrow().first_child().unwrap();
+        assert_eq!(
+            head,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "head",
+                Vec::new()
+            )))))
+        );
+
+        let body = head.borrow().next_sibling().unwrap();
+        assert_eq!(
+            body,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "body",
+                Vec::new()
+            )))))
+        );
+    }
+
+    #[test]
+    fn test_text() {
+        let html = "<html><head></head><body><p>hello world<p></body></html>".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        let body = document
+            .borrow()
+            .first_child()
+            .unwrap() // html
+            .borrow()
+            .first_child()
+            .unwrap() // head
+            .borrow()
+            .next_sibling()
+            .unwrap();
+        assert_eq!(
+            body,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "body",
+                Vec::new()
+            )))))
+        );
+
+        let p = body.borrow().first_child().unwrap();
+        assert_eq!(
+            p,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "p",
+                Vec::new()
+            )))))
+        );
+
+        let text = p.borrow().first_child().unwrap();
+        assert_eq!(
+            text,
+            Rc::new(RefCell::new(Node::new(NodeKind::Text(
+                "hello world".to_string()
+            ))))
+        );
     }
 }

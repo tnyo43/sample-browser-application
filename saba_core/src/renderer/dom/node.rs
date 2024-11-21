@@ -33,6 +33,7 @@ impl FromStr for ElementKind {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Element {
     kind: ElementKind,
     attributes: Vec<Attribute>,
@@ -51,12 +52,25 @@ impl Element {
     }
 }
 
+#[derive(Debug)]
 pub enum NodeKind {
     Document,
     Element(Element),
     Text(String),
 }
 
+impl PartialEq for NodeKind {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Document, Self::Document) => true,
+            (Self::Element(l0), Self::Element(r0)) => l0.kind == r0.kind,
+            (Self::Text(l0), Self::Text(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Node {
     pub kind: NodeKind,
     window: Weak<RefCell<Node>>,
@@ -65,6 +79,12 @@ pub struct Node {
     last_child: Weak<RefCell<Node>>,
     previous_sibling: Weak<RefCell<Node>>,
     next_sibling: Option<Rc<RefCell<Node>>>,
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
 }
 
 impl Node {

@@ -1,6 +1,6 @@
 use alloc::string::String;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Eq)]
 pub struct Attribute {
     name: String,
     value: String,
