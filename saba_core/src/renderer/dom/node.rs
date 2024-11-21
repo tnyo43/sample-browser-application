@@ -154,6 +154,7 @@ impl Node {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Window {
     document: Rc<RefCell<Node>>,
 }
