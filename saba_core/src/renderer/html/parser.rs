@@ -112,16 +112,12 @@ impl HtmlParser {
             }
 
             last_sibling
+                .as_ref()
                 .unwrap()
                 .borrow_mut()
                 .set_next_sibling(Some(node.clone()));
-            node.borrow_mut().set_previous_sibling(Rc::downgrade(
-                &current
-                    .borrow()
-                    .last_child()
-                    .upgrade()
-                    .expect("failed to get a last child"),
-            ))
+            node.borrow_mut()
+                .set_previous_sibling(Rc::downgrade(&last_sibling.unwrap()));
         } else {
             current.borrow_mut().set_first_child(Some(node.clone()));
         }
@@ -156,19 +152,27 @@ impl HtmlParser {
         let node = Rc::new(RefCell::new(self.create_char(c)));
 
         if current.borrow().first_child().is_some() {
-            current
-                .borrow()
-                .first_child()
+            let mut last_sibling = current.borrow().first_child();
+            loop {
+                last_sibling = match last_sibling {
+                    Some(ref node) => {
+                        if node.borrow().next_sibling().is_some() {
+                            node.borrow().next_sibling()
+                        } else {
+                            break;
+                        }
+                    }
+                    None => unimplemented!("last_sibling should be Some"),
+                }
+            }
+
+            last_sibling
+                .as_ref()
                 .unwrap()
                 .borrow_mut()
                 .set_next_sibling(Some(node.clone()));
-            node.borrow_mut().set_previous_sibling(Rc::downgrade(
-                &current
-                    .borrow()
-                    .last_child()
-                    .upgrade()
-                    .expect("failed to get a last child"),
-            ));
+            node.borrow_mut()
+                .set_previous_sibling(Rc::downgrade(&last_sibling.unwrap()));
         } else {
             current.borrow_mut().set_first_child(Some(node.clone()));
         }
@@ -327,7 +331,7 @@ impl HtmlParser {
                             self_closing: _,
                             ref attributes,
                         }) => match tag.as_str() {
-                            "p" => {
+                            "p" | "a" | "h1" | "h2" => {
                                 self.insert_element(tag, attributes.to_vec());
                                 token = self.t.next();
                                 continue;
@@ -352,7 +356,7 @@ impl HtmlParser {
                                     assert!(self.pop_current_node(ElementKind::Html));
                                 };
                             }
-                            "p" => {
+                            "p" | "a" | "h1" | "h2" => {
                                 let element_kind = ElementKind::from_str(tag)
                                     .expect("failed to convert string to ElementKind");
                                 self.pop_until(element_kind);
@@ -578,5 +582,70 @@ mod tests {
                 "hello world".to_string()
             ))))
         );
+    }
+
+    #[test]
+    fn text_next_and_previous_siblings() {
+        let html =
+            "<html><head></head><body><h1></h1><a></a><p></p><h2></h2></body></html>".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        let body = document
+            .borrow()
+            .first_child()
+            .unwrap() // html
+            .borrow()
+            .first_child()
+            .unwrap() // head
+            .borrow()
+            .next_sibling()
+            .unwrap();
+        assert_eq!(
+            body,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "body",
+                Vec::new()
+            )))))
+        );
+
+        let h1 = body.borrow().first_child().unwrap();
+        let a = h1.borrow().next_sibling().unwrap();
+        let p = a.borrow().next_sibling().unwrap();
+        let h2 = p.borrow().next_sibling().unwrap();
+
+        assert_eq!(
+            h1,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "h1",
+                Vec::new()
+            )))))
+        );
+        assert_eq!(
+            a,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "a",
+                Vec::new()
+            )))))
+        );
+        assert_eq!(
+            p,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "p",
+                Vec::new()
+            )))))
+        );
+        assert_eq!(
+            h2,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "h2",
+                Vec::new()
+            )))))
+        );
+
+        assert!(a.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&h1)));
+        assert!(p.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&a)));
+        assert!(h2.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&p)));
     }
 }

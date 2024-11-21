@@ -16,6 +16,9 @@ pub enum ElementKind {
     Style,
     Body,
     P,
+    A,
+    H1,
+    H2,
 }
 
 impl FromStr for ElementKind {
@@ -28,6 +31,9 @@ impl FromStr for ElementKind {
             "style" => Ok(ElementKind::Style),
             "body" => Ok(ElementKind::Body),
             "p" => Ok(ElementKind::P),
+            "a" => Ok(ElementKind::A),
+            "h1" => Ok(ElementKind::H1),
+            "h2" => Ok(ElementKind::H2),
             _ => Err(format!("unimplemented element name {:?}", s)),
         }
     }
