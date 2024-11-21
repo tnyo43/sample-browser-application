@@ -9,7 +9,7 @@ use alloc::{
 
 use crate::renderer::html::attribute::Attribute;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ElementKind {
     Html,
     Head,

@@ -41,17 +41,47 @@ impl HtmlParser {
         }
     }
 
+    fn contain_in_stack(&self, element_kind: ElementKind) -> bool {
+        for i in 0..self.stack_of_open_elements.len() {
+            if self.stack_of_open_elements[i].borrow().element_kind() == Some(element_kind) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     fn pop_until(&mut self, element_kind: ElementKind) {
+        assert!(
+            self.contain_in_stack(element_kind),
+            "stack doesn't have an element {:?}",
+            element_kind
+        );
+
         loop {
             let current = match self.stack_of_open_elements.pop() {
                 Some(n) => n,
-                None => return,
+                None => unreachable!("element should be found"),
             };
 
             if current.borrow().element_kind() == Some(element_kind) {
                 return;
             }
         }
+    }
+
+    fn pop_current_node(&mut self, element_kind: ElementKind) -> bool {
+        let current = match self.stack_of_open_elements.last() {
+            Some(n) => n,
+            None => return false,
+        };
+
+        if current.borrow().element_kind() == Some(element_kind) {
+            self.stack_of_open_elements.pop();
+            return true;
+        }
+
+        false
     }
 
     fn create_element(&self, tag: &str, attributes: Vec<Attribute>) -> Node {
@@ -290,7 +320,37 @@ impl HtmlParser {
                     self.mode = InsertionMode::InBody;
                     continue;
                 }
-                InsertionMode::InBody => todo!(),
+                InsertionMode::InBody => {
+                    match token {
+                        Some(HtmlToken::EndTag { ref tag }) => match tag.as_str() {
+                            "body" => {
+                                self.mode = InsertionMode::AfterBody;
+                                token = self.t.next();
+                                if !self.contain_in_stack(ElementKind::Body) {
+                                    continue;
+                                }
+                                self.pop_until(ElementKind::Body);
+                                continue;
+                            }
+                            "html" => {
+                                if self.pop_current_node(ElementKind::Body) {
+                                    self.mode = InsertionMode::AfterAfterBody;
+                                    assert!(self.pop_current_node(ElementKind::Html));
+                                };
+                            }
+                            _ => {
+                                token = self.t.next();
+                            }
+                        },
+                        Some(HtmlToken::Eof) | None => {
+                            return self.window.clone();
+                        }
+                        _ => {}
+                    }
+
+                    continue;
+                }
+
                 InsertionMode::Text => todo!(),
                 InsertionMode::AfterBody => todo!(),
                 InsertionMode::AfterAfterBody => todo!(),
