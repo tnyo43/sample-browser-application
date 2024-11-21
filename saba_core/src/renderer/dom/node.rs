@@ -1,4 +1,4 @@
-use core::{cell::RefCell, fmt::Error, str::FromStr};
+use core::{cell::RefCell, str::FromStr};
 
 use alloc::{
     format,
@@ -9,6 +9,7 @@ use alloc::{
 
 use crate::renderer::html::attribute::Attribute;
 
+#[derive(PartialEq, Clone, Copy)]
 pub enum ElementKind {
     Html,
     Head,
@@ -42,6 +43,10 @@ impl Element {
             attributes,
         }
     }
+
+    pub fn kind(&self) -> ElementKind {
+        self.kind
+    }
 }
 
 pub enum NodeKind {
@@ -70,6 +75,13 @@ impl Node {
             last_child: Weak::new(),
             previous_sibling: Weak::new(),
             next_sibling: None,
+        }
+    }
+
+    pub fn element_kind(&self) -> Option<ElementKind> {
+        match self.kind {
+            NodeKind::Element(ref element) => Some(element.kind()),
+            _ => None,
         }
     }
 
