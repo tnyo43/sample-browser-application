@@ -208,7 +208,7 @@ impl HtmlParser {
                         }) => {
                             if tag == "html" {
                                 self.insert_element(tag, attributes.to_vec());
-                                self.mode = InsertionMode::BeforeHtml;
+                                self.mode = InsertionMode::BeforeHead;
                                 token = self.t.next();
                                 continue;
                             }
