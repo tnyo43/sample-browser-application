@@ -363,10 +363,14 @@ impl HtmlParser {
                                 token = self.t.next();
                             }
                         },
+                        Some(HtmlToken::Char(c)) => {
+                            self.insert_char(c);
+                            token = self.t.next();
+                            continue;
+                        }
                         Some(HtmlToken::Eof) | None => {
                             return self.window.clone();
                         }
-                        _ => {}
                     }
 
                     continue;
