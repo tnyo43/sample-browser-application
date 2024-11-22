@@ -599,9 +599,8 @@ mod tests {
     }
 
     #[test]
-    fn text_next_and_previous_siblings() {
-        let html = "<html><head></head><body><h1></h1><a></a>hello<p></p><h2></h2></body></html>"
-            .to_string();
+    fn test_next_and_previous_siblings() {
+        let html = "<html><head></head><body><h1></h1><a></a><p></p></body></html>".to_string();
         let t = HtmlTokenizer::new(html);
         let window = HtmlParser::new(t).construct_tree();
 
@@ -626,9 +625,7 @@ mod tests {
 
         let h1 = body.borrow().first_child().unwrap();
         let a = h1.borrow().next_sibling().unwrap();
-        let hello = a.borrow().next_sibling().unwrap();
-        let p = hello.borrow().next_sibling().unwrap();
-        let h2 = p.borrow().next_sibling().unwrap();
+        let p = a.borrow().next_sibling().unwrap();
 
         assert_eq!(
             h1,
@@ -637,6 +634,54 @@ mod tests {
                 Vec::new()
             )))))
         );
+        assert_eq!(
+            a,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "a",
+                Vec::new()
+            )))))
+        );
+        assert_eq!(
+            p,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "p",
+                Vec::new()
+            )))))
+        );
+
+        assert!(a.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&h1)));
+        assert!(p.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&a)));
+    }
+
+    #[test]
+    fn text_next_and_previous_siblings_with_text() {
+        let html = "<html><head></head><body><a></a>hello<p></p></body></html>".to_string();
+        let t = HtmlTokenizer::new(html);
+        let window = HtmlParser::new(t).construct_tree();
+
+        let document = window.borrow().document();
+        let body = document
+            .borrow()
+            .first_child()
+            .unwrap() // html
+            .borrow()
+            .first_child()
+            .unwrap() // head
+            .borrow()
+            .next_sibling()
+            .unwrap();
+        assert_eq!(
+            body,
+            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
+                "body",
+                Vec::new()
+            )))))
+        );
+
+        let a = body.borrow().first_child().unwrap();
+        let hello = a.borrow().next_sibling().unwrap();
+        let p = hello.borrow().next_sibling().unwrap();
+
         assert_eq!(
             a,
             Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
@@ -655,17 +700,8 @@ mod tests {
                 Vec::new()
             )))))
         );
-        assert_eq!(
-            h2,
-            Rc::new(RefCell::new(Node::new(NodeKind::Element(Element::new(
-                "h2",
-                Vec::new()
-            )))))
-        );
 
-        assert!(a.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&h1)));
         assert!(hello.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&a)));
         assert!(p.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&hello)));
-        assert!(h2.borrow().previous_sibling().ptr_eq(&Rc::downgrade(&p)));
     }
 }
