@@ -143,6 +143,10 @@ dependencies = [
 [[package]]
 name = "ui_wasabi"
 version = "0.1.0"
+dependencies = [
+ "noli",
+ "saba_core",
+]
 
 [[package]]
 name = "unicode-ident"
