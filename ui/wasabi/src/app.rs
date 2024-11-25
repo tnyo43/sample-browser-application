@@ -6,6 +6,9 @@ use alloc::{format, rc::Rc, string::ToString};
 use core::cell::RefCell;
 use noli::{
     error::Result as OsResult,
+    prelude::SystemApi,
+    println,
+    sys::{api::MouseEvent, wasabi::Api},
     window::{StringSize, Window},
 };
 use saba_core::{browser::Browser, error::Error};
@@ -78,8 +81,27 @@ impl WasabiUI {
         Ok(())
     }
 
+    fn handle_mouse_input(&self) -> Result<(), Error> {
+        if let Some(MouseEvent {
+            button: _,
+            position,
+        }) = Api::get_mouse_cursor_info()
+        {
+            println!("mouse position {:?}", position);
+        }
+
+        Ok(())
+    }
+
+    fn run_app(&self) -> Result<(), Error> {
+        loop {
+            self.handle_mouse_input()?;
+        }
+    }
+
     pub fn start(&mut self) -> Result<(), Error> {
         self.setup()?;
+        self.run_app()?;
         Ok(())
     }
 }
