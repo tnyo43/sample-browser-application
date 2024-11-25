@@ -82,12 +82,11 @@ impl WasabiUI {
     }
 
     fn handle_mouse_input(&self) -> Result<(), Error> {
-        if let Some(MouseEvent {
-            button: _,
-            position,
-        }) = Api::get_mouse_cursor_info()
-        {
+        if let Some(MouseEvent { button, position }) = Api::get_mouse_cursor_info() {
             println!("mouse position {:?}", position);
+            if button.l() || button.c() || button.r() {
+                println!("mouse clicked {:?}", button);
+            }
         }
 
         Ok(())
