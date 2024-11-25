@@ -92,9 +92,18 @@ impl WasabiUI {
         Ok(())
     }
 
+    fn handle_key_input(&self) -> Result<(), Error> {
+        if let Some(c) = Api::read_key() {
+            println!("input text: {:?}", c);
+        }
+
+        Ok(())
+    }
+
     fn run_app(&self) -> Result<(), Error> {
         loop {
             self.handle_mouse_input()?;
+            self.handle_key_input()?;
         }
     }
 
