@@ -19,7 +19,7 @@ use noli::{
     sys::{api::MouseEvent, wasabi::Api},
     window::{StringSize, Window},
 };
-use saba_core::{browser::Browser, error::Error};
+use saba_core::{browser::Browser, error::Error, http::HttpResponse};
 
 #[derive(PartialEq)]
 enum InputMode {
@@ -204,15 +204,40 @@ impl WasabiUI {
         Ok(())
     }
 
-    fn handle_key_input(&mut self) -> Result<(), Error> {
+    fn start_navigation(
+        &mut self,
+        handle_url: fn(String) -> Result<HttpResponse, Error>,
+        destination: String,
+    ) -> Result<(), Error> {
+        match handle_url(destination) {
+            Ok(response) => {
+                let page = self.browser.borrow().current_page();
+                page.borrow_mut().receive_response(response);
+            }
+            Err(e) => return Err(e),
+        }
+
+        Ok(())
+    }
+
+    fn handle_key_input(
+        &mut self,
+        handle_url: fn(String) -> Result<HttpResponse, Error>,
+    ) -> Result<(), Error> {
         match self.input_mode {
             InputMode::Normal => {
                 let _ = Api::read_key();
             }
             InputMode::Editing => {
                 if let Some(c) = Api::read_key() {
+                    // enter
+                    if c == 0x0A as char {
+                        self.start_navigation(handle_url, self.input_url.clone())?;
+                        self.input_url = String::new();
+                        self.input_mode = InputMode::Normal;
+                    } else if c == 0x7F as char || c == 0x08 as char
                     // delete or backspace
-                    if c == 0x7F as char || c == 0x08 as char {
+                    {
                         self.input_url.pop();
                         self.update_address_bar()?;
                     } else {
@@ -226,16 +251,22 @@ impl WasabiUI {
         Ok(())
     }
 
-    fn run_app(&mut self) -> Result<(), Error> {
+    fn run_app(
+        &mut self,
+        handle_url: fn(String) -> Result<HttpResponse, Error>,
+    ) -> Result<(), Error> {
         loop {
             self.handle_mouse_input()?;
-            self.handle_key_input()?;
+            self.handle_key_input(handle_url)?;
         }
     }
 
-    pub fn start(&mut self) -> Result<(), Error> {
+    pub fn start(
+        &mut self,
+        handle_url: fn(String) -> Result<HttpResponse, Error>,
+    ) -> Result<(), Error> {
         self.setup()?;
-        self.run_app()?;
+        self.run_app(handle_url)?;
         Ok(())
     }
 }

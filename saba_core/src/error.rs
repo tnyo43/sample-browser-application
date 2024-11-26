@@ -4,5 +4,6 @@ use alloc::string::String;
 pub enum Error {
     Network(String),
     InvalidUI(String),
+    UnexpectedInput(String),
     Other(String),
 }
