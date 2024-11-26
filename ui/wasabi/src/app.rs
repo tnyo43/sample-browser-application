@@ -1,6 +1,9 @@
-use crate::constants::{
-    ADDRESS_BAR_HEIGHT, BLACK, DARK_GRAY, GRAY, LIGHT_GRAY, TOOLBAR_HEIGHT, WHITE, WINDOW_HEIGHT,
-    WINDOW_INIT_X_POS, WINDOW_INIT_Y_POS, WINDOW_WIDTH,
+use crate::{
+    constants::{
+        ADDRESS_BAR_HEIGHT, BLACK, DARK_GRAY, GRAY, LIGHT_GRAY, TOOLBAR_HEIGHT, WHITE,
+        WINDOW_HEIGHT, WINDOW_INIT_X_POS, WINDOW_INIT_Y_POS, WINDOW_WIDTH,
+    },
+    cursor::Cursor,
 };
 use alloc::{format, rc::Rc, string::ToString};
 use core::cell::RefCell;
@@ -16,6 +19,7 @@ use saba_core::{browser::Browser, error::Error};
 pub struct WasabiUI {
     browser: Rc<RefCell<Browser>>,
     window: Window,
+    cursor: Cursor,
 }
 
 impl WasabiUI {
@@ -31,6 +35,7 @@ impl WasabiUI {
                 WINDOW_HEIGHT,
             )
             .unwrap(),
+            cursor: Cursor::new(),
         }
     }
 
@@ -81,12 +86,26 @@ impl WasabiUI {
         Ok(())
     }
 
-    fn handle_mouse_input(&self) -> Result<(), Error> {
+    fn handle_mouse_input(&mut self) -> Result<(), Error> {
         if let Some(MouseEvent { button, position }) = Api::get_mouse_cursor_info() {
-            println!("mouse position {:?}", position);
-            if button.l() || button.c() || button.r() {
-                println!("mouse clicked {:?}", button);
+            let relative_pos = (
+                position.x - WINDOW_INIT_X_POS,
+                position.y - WINDOW_INIT_Y_POS,
+            );
+
+            // outside window
+            if relative_pos.0 < 0
+                || relative_pos.0 > WINDOW_WIDTH
+                || relative_pos.1 < 0
+                || relative_pos.1 > WINDOW_HEIGHT
+            {
+                return Ok(());
             }
+
+            self.window.flush_area(self.cursor.rect());
+            self.cursor.set_position(position.x, position.y);
+            self.window.flush_area(self.cursor.rect());
+            self.cursor.flush();
         }
 
         Ok(())
@@ -100,7 +119,7 @@ impl WasabiUI {
         Ok(())
     }
 
-    fn run_app(&self) -> Result<(), Error> {
+    fn run_app(&mut self) -> Result<(), Error> {
         loop {
             self.handle_mouse_input()?;
             self.handle_key_input()?;
