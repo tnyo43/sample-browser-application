@@ -86,6 +86,31 @@ impl CssTokenizer {
 
         n
     }
+
+    fn consume_ident_token(&mut self) -> String {
+        let mut s = String::new();
+        s.push(self.input[self.pos]);
+
+        loop {
+            self.pos += 1;
+            if self.pos >= self.input.len() {
+                break;
+            }
+            let c = self.input[self.pos];
+
+            match c {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => {
+                    s.push(c);
+                }
+                _ => {
+                    self.pos -= 1;
+                    break;
+                }
+            }
+        }
+
+        s
+    }
 }
 
 impl Iterator for CssTokenizer {
@@ -112,6 +137,20 @@ impl Iterator for CssTokenizer {
                 }
                 '"' | '\'' => CssToken::StringToken(self.consume_string_token()),
                 '0'..='9' => CssToken::Number(self.consume_numeric_token()),
+                '#' => CssToken::HashToken(self.consume_ident_token()),
+                '@' => {
+                    if self.pos + 3 < self.input.len()
+                        && self.input[self.pos + 1].is_ascii_alphabetic()
+                        && self.input[self.pos + 2].is_alphanumeric()
+                        && self.input[self.pos + 3].is_alphanumeric()
+                    {
+                        self.pos += 1;
+                        CssToken::AtKeyword(self.consume_ident_token())
+                    } else {
+                        CssToken::Delim('@')
+                    }
+                }
+                'a'..='z' | 'A'..='Z' | '-' | '_' => CssToken::Ident(self.consume_ident_token()),
                 _ => {
                     todo!()
                 }
@@ -178,6 +217,53 @@ mod tests {
 
         assert_eq!(tokenizer.next(), Some(CssToken::Number(123f64)));
         assert_eq!(tokenizer.next(), Some(CssToken::Number(45.67f64)));
+        assert_eq!(tokenizer.next(), None);
+    }
+
+    #[test]
+    fn parse_hash_token() {
+        let css = "#id-123 { color: red; }".to_string();
+        let mut tokenizer = CssTokenizer::new(css);
+
+        assert_eq!(
+            tokenizer.next(),
+            Some(CssToken::HashToken("#id-123".to_string()))
+        );
+        assert_eq!(tokenizer.next(), Some(CssToken::OpenCurly));
+        assert_eq!(tokenizer.next(), Some(CssToken::Ident("color".to_string())));
+        assert_eq!(tokenizer.next(), Some(CssToken::Colon));
+        assert_eq!(tokenizer.next(), Some(CssToken::Ident("red".to_string())));
+        assert_eq!(tokenizer.next(), Some(CssToken::SemiColon));
+        assert_eq!(tokenizer.next(), Some(CssToken::CloseCurly));
+        assert_eq!(tokenizer.next(), None);
+    }
+
+    #[test]
+    fn parse_media_query() {
+        let css = "@media (hover:hover) {.bold { font-weight: 800; }".to_string();
+        let mut tokenizer = CssTokenizer::new(css);
+
+        assert_eq!(
+            tokenizer.next(),
+            Some(CssToken::AtKeyword("media".to_string()))
+        );
+        assert_eq!(tokenizer.next(), Some(CssToken::OpenParenthesis));
+        assert_eq!(tokenizer.next(), Some(CssToken::Ident("hover".to_string())));
+        assert_eq!(tokenizer.next(), Some(CssToken::Colon));
+        assert_eq!(tokenizer.next(), Some(CssToken::Ident("hover".to_string())));
+        assert_eq!(tokenizer.next(), Some(CssToken::CloseParenthesis));
+        assert_eq!(tokenizer.next(), Some(CssToken::OpenCurly));
+        assert_eq!(tokenizer.next(), Some(CssToken::Delim('.')));
+        assert_eq!(tokenizer.next(), Some(CssToken::Ident("bold".to_string())));
+        assert_eq!(tokenizer.next(), Some(CssToken::OpenCurly));
+        assert_eq!(
+            tokenizer.next(),
+            Some(CssToken::Ident("font-weight".to_string()))
+        );
+        assert_eq!(tokenizer.next(), Some(CssToken::Colon));
+        assert_eq!(tokenizer.next(), Some(CssToken::Number(800f64)));
+        assert_eq!(tokenizer.next(), Some(CssToken::SemiColon));
+        assert_eq!(tokenizer.next(), Some(CssToken::CloseCurly));
         assert_eq!(tokenizer.next(), None);
     }
 }
